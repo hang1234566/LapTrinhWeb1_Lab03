@@ -1,11 +1,10 @@
 package com.example.demo;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/") 
@@ -14,71 +13,73 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
-    // 1. Hiển thị danh sách sinh viên
+    // 1. HIỂN THỊ DANH SÁCH
     @GetMapping("/students")
     public String listStudents(Model model) {
         model.addAttribute("students", studentService.getAllStudents());
         return "students"; 
     }
 
-    // 2. Mở form thêm mới
-    @GetMapping("/student/add")
-    public String showAddForm(Model model) {
-        // Tạo đối tượng trống, ID sẽ được xử lý lúc nhấn Save
-        model.addAttribute("student", new Student());
-        return "add-student"; 
-    }
-
-    // 3. Mở form sửa (Nạp dữ liệu cũ bằng ID)
-    @GetMapping("/student/edit/{id}")
-    public String showEditForm(@PathVariable("id") String id, Model model) {
+    // 2. XEM CHI TIẾT
+    @GetMapping("/student/{id}")
+    public String viewStudent(@PathVariable("id") Integer id, Model model, RedirectAttributes ra) {
         Student student = studentService.getStudentById(id);
         if (student != null) {
             model.addAttribute("student", student);
+            return "student-detail"; 
+        }
+        ra.addFlashAttribute("errorMessage", "Không tìm thấy sinh viên với ID: " + id);
+        return "redirect:/students";
+    }
+
+    // 3. MỞ FORM THÊM MỚI
+    @GetMapping("/student/add")
+    public String showAddForm(Model model) {
+        if (!model.containsAttribute("student")) {
+            model.addAttribute("student", new Student());
+        }
+        model.addAttribute("pageTitle", "Thêm mới sinh viên");
+        return "add-student"; 
+    }
+
+    // 4. MỞ FORM CHỈNH SỬA
+    @GetMapping("/student/edit/{id}")
+    public String showEditForm(@PathVariable("id") Integer id, Model model, RedirectAttributes ra) {
+        Student student = studentService.getStudentById(id);
+        if (student != null) {
+            model.addAttribute("student", student);
+            model.addAttribute("pageTitle", "Chỉnh sửa sinh viên");
             return "add-student"; 
         }
+        ra.addFlashAttribute("errorMessage", "ID không hợp lệ!");
         return "redirect:/students";
     }
 
-    // 4. Xử lý Lưu (Cả Thêm và Sửa) - ĐÃ SỬA TẠI ĐÂY
+    // 5. XỬ LÝ LƯU (Dùng cho cả thêm mới và cập nhật)
     @PostMapping("/student/save")
-    public String saveStudent(@ModelAttribute("student") Student student) {
-        // GỌI HÀM TẠO UUID: 
-        // Nếu là thêm mới (id null), nó sẽ tạo mới. 
-        // Nếu là sửa (đã có id từ input hidden), nó sẽ giữ nguyên id đó để Update.
-        student.generateIdIfNull(); 
-        
-        studentService.saveStudent(student);
+    public String saveStudent(@ModelAttribute("student") Student student, RedirectAttributes ra) {
+        try {
+            // Nếu id là 0 thì set về null để DB tự sinh ID mới (106010...)
+            if (student.getId() != null && student.getId() == 0) {
+                student.setId(null);
+            }
+            studentService.saveStudent(student);
+            ra.addFlashAttribute("message", "Lưu thông tin thành công!");
+        } catch (Exception e) {
+            ra.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
+        }
         return "redirect:/students";
     }
 
-    // 5. Xem chi tiết
-    @GetMapping("/student/{id}")
-    public String getStudentDetail(@PathVariable("id") String id, Model model) { 
-        Student student = studentService.getStudentById(id); 
-        model.addAttribute("student", student);
-        return "student-detail";
-    }
-
-    // 6. Xóa
-    @GetMapping("/student/delete/{id}")
-    @ResponseBody
-    public ResponseEntity<String> deleteStudent(@PathVariable("id") String id) { 
+    // 6. XỬ LÝ XÓA (Đã sửa từ @DeleteMapping thành @GetMapping để chạy được với nút bấm HTML)
+    @GetMapping("/student/delete/{id}") 
+    public String deleteStudent(@PathVariable("id") Integer id, RedirectAttributes ra) { 
         try {
             studentService.deleteStudent(id);
-            return ResponseEntity.ok("Xóa thành công"); 
+            ra.addFlashAttribute("message", "Đã xóa sinh viên mã số " + id + " thành công!");
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Lỗi hệ thống");
+            ra.addFlashAttribute("errorMessage", "Lỗi: Không thể xóa sinh viên này!");
         }
-    }
-
-    // 7. API Search
-    @GetMapping("/api/students/search")
-    @ResponseBody
-    public List<Student> searchStudents(@RequestParam(value = "name", required = false) String name) {
-        if (name == null || name.isEmpty()) {
-            return studentService.getAllStudents();
-        }
-        return studentService.searchByName(name);
+        return "redirect:/students"; 
     }
 }

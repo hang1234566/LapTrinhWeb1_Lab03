@@ -2,105 +2,98 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Quản lý Sinh viên</title>
+    <title>Quản lý Sinh viên - Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { --primary-color: #3b71ca; --female-color: #e83e8c; }
-        .card { border-radius: 12px; overflow: hidden; }
-        .table-primary-custom { background-color: var(--primary-color); color: white; }
-        
-        .uuid-column { 
-            max-width: 100px; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            white-space: nowrap; 
-            font-size: 0.8rem;
-            color: #6c757d;
-        }
-        .uuid-column:hover { color: var(--primary-color); cursor: pointer; }
-
-        /* Nút hành động bo tròn nhẹ */
+        body { background-color: #f8f9fa; }
+        .card { border-radius: 15px; border: none; }
         .btn-action { 
-            width: 32px; height: 32px; 
+            width: 70px; height: 34px; 
             display: inline-flex; align-items: center; justify-content: center;
-            border-radius: 8px; transition: transform 0.2s;
+            border-radius: 8px; transition: all 0.2s;
+            font-size: 0.8rem; font-weight: bold; text-decoration: none;
         }
-        .btn-action:hover { transform: scale(1.1); }
-
-        /* Giới tính badge */
-        .badge-gender { width: 70px; padding: 6px; font-weight: 500; }
+        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .badge-gender { width: 70px; padding: 7px; font-weight: 600; border-radius: 30px; font-size: 0.7rem; }
         .bg-female { background-color: var(--female-color) !important; color: white; }
-        
-        /* Hiệu ứng row ẩn hiện mượt */
-        tr { transition: opacity 0.3s ease; }
+        tr { transition: all 0.3s ease; }
+        .id-text { font-family: 'Monaco', 'Consolas', monospace; color: #3b71ca; font-weight: bold; }
+        .table thead th { border-top: none; background-color: #f8f9fa; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; color: #6c757d; }
     </style>
 </head>
-<body class="bg-light">
+<body>
     <div class="container py-5">
-        <div class="card shadow border-0">
-            <div class="card-header bg-white py-3 border-0">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h3 class="mb-0 fw-bold text-dark">
-                        <i class="fas fa-users-viewfinder me-2 text-primary"></i>QUẢN LÝ SINH VIÊN
-                    </h3>
-                    <a th:href="@{/student/add}" class="btn btn-success px-4 rounded-pill shadow-sm">
-                        <i class="fas fa-plus-circle me-1"></i> THÊM MỚI
-                    </a>
+        
+        <div th:if="${message}" class="alert alert-success alert-dismissible fade show shadow-sm border-0" role="alert">
+            <strong th:text="${message}"></strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show shadow-sm border-0" role="alert">
+            <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-4 border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h3 class="mb-0 fw-bold text-primary">HỆ THỐNG SINH VIÊN</h3>
+                    </div>
+                    <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                        <a th:href="@{/student/add}" class="btn btn-primary px-4 py-2 rounded-pill fw-bold shadow-sm">
+                            THÊM SINH VIÊN
+                        </a>
+                    </div>
                 </div>
             </div>
             
-            <div class="card-body p-4">
+            <div class="card-body px-4">
                 <div class="row mb-4">
-                    <div class="col-md-5">
-                        <div class="input-group shadow-sm">
-                            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                            <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Tìm theo tên sinh viên...">
+                    <div class="col-md-6 col-lg-4">
+                        <div class="shadow-sm rounded-pill overflow-hidden border">
+                            <input type="text" id="searchInput" class="form-control border-0 py-2 px-4" placeholder="Tìm theo tên, ID hoặc email...">
                         </div>
                     </div>
                 </div>
 
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle border-top">
-                        <thead class="bg-light">
-                            <tr class="text-secondary small text-uppercase">
-                                <th class="ps-4">Mã ID</th>
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Mã số</th>
                                 <th>Họ và Tên</th>
                                 <th class="text-center">Giới tính</th>
                                 <th class="text-center">Tuổi</th>
-                                <th>Email</th>
-                                <th class="text-center">Thao tác</th>
+                                <th>Email liên hệ</th>
+                                <th class="text-center">Hành động</th>
                             </tr>
                         </thead>
                         <tbody id="studentTable">
-                            <tr th:each="sv : ${students}" th:id="'row-' + ${sv.id}">
+                            <tr th:each="sv : ${students}">
                                 <td class="ps-4">
-                                    <div class="uuid-column" th:text="${sv.id}" th:title="${sv.id}"></div>
+                                    <span class="id-text" th:text="${sv.id}"></span>
                                 </td>
                                 <td>
-                                    <span class="fw-bold text-dark" th:text="${sv.name}"></span>
+                                    <div class="fw-bold text-dark" th:text="${sv.name}"></div>
                                 </td>
                                 <td class="text-center">
-                                    <span th:if="${sv.gender == 'Nam'}" class="badge bg-primary badge-gender">
-                                        <i class="fas fa-mars me-1"></i> Nam
-                                    </span>
-                                    <span th:if="${sv.gender == 'Nữ'}" class="badge bg-female badge-gender">
-                                        <i class="fas fa-venus me-1"></i> Nữ
-                                    </span>
+                                    <span th:if="${sv.gender == 'Nam'}" class="badge bg-primary badge-gender">NAM</span>
+                                    <span th:if="${sv.gender == 'Nữ'}" class="badge bg-female badge-gender">NỮ</span>
+                                    <span th:if="${sv.gender != 'Nam' && sv.gender != 'Nữ'}" class="badge bg-secondary badge-gender">KHÁC</span>
                                 </td>
-                                <td class="text-center" th:text="${sv.age}"></td>
-                                <td class="text-muted" th:text="${sv.email}"></td>
+                                <td class="text-center fw-bold" th:text="${sv.age}"></td>
+                                <td>
+                                    <span class="text-muted small" th:text="${sv.email}"></span>
+                                </td>
                                 <td class="text-center">
                                     <div class="d-flex justify-content-center gap-2">
-                                        <a th:href="@{/student/{id}(id=${sv.id})}" class="btn btn-info btn-action text-white" title="Chi tiết">
-                                            <i class="fas fa-eye fa-sm"></i>
-                                        </a>
-                                        <a th:href="@{/student/edit/{id}(id=${sv.id})}" class="btn btn-warning btn-action text-white" title="Chỉnh sửa">
-                                            <i class="fas fa-pen fa-sm"></i>
-                                        </a>
-                                        <button class="btn btn-danger btn-action" th:onclick="deleteStudent([[${sv.id}]])" title="Xóa">
-                                            <i class="fas fa-trash-alt fa-sm"></i>
-                                        </button>
+                                        <a th:href="@{/student/{id}(id=${sv.id})}" class="btn btn-info btn-action text-white">XEM</a>
+                                        <a th:href="@{/student/edit/{id}(id=${sv.id})}" class="btn btn-warning btn-action text-white">SỬA</a>
+                                        <a th:href="@{/student/delete/{id}(id=${sv.id})}" 
+                                           class="btn btn-danger btn-action" 
+                                           onclick="return confirm('Má có chắc chắn muốn xóa sinh viên này không?')">XÓA</a>
                                     </div>
                                 </td>
                             </tr>
@@ -109,53 +102,28 @@
                 </div>
                 
                 <div id="noData" class="text-center py-5 d-none">
-                    <i class="fas fa-search mb-3 text-muted fa-3x"></i>
-                    <p class="text-muted">Không tìm thấy sinh viên nào phù hợp.</p>
+                    <p class="text-muted fw-bold">Không tìm thấy dữ liệu phù hợp!</p>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Tìm kiếm thông minh
+        // Hàm tìm kiếm nhanh trên bảng
         document.getElementById('searchInput').addEventListener('input', function(e) {
-            const filter = e.target.value.toUpperCase();
+            const filter = e.target.value.toLowerCase();
             const rows = document.querySelectorAll("#studentTable tr");
-            let count = 0;
+            let hasVisibleRow = false;
 
             rows.forEach(row => {
-                const nameText = row.children[1].textContent || row.children[1].innerText;
-                if (nameText.toUpperCase().includes(filter)) {
-                    row.style.display = "";
-                    count++;
-                } else {
-                    row.style.display = "none";
-                }
+                const text = row.innerText.toLowerCase();
+                const isMatch = text.includes(filter);
+                row.style.display = isMatch ? "" : "none";
+                if(isMatch) hasVisibleRow = true;
             });
-            
-            document.getElementById('noData').classList.toggle('d-none', count > 0);
+            document.getElementById('noData').classList.toggle('d-none', hasVisibleRow);
         });
-
-        // Xóa sinh viên với hiệu ứng
-        function deleteStudent(id) {
-            if (confirm(`Xác nhận xóa sinh viên?\nID: ${id}`)) {
-                fetch('/student/delete/' + id)
-                    .then(response => {
-                        if (response.ok) {
-                            const row = document.getElementById('row-' + id);
-                            if (row) {
-                                row.style.backgroundColor = '#ffeeee';
-                                row.style.transition = '0.4s';
-                                row.style.opacity = '0';
-                                setTimeout(() => row.remove(), 400);
-                            }
-                        } else {
-                            alert("Không thể xóa lúc này.");
-                        }
-                    })
-                    .catch(err => alert("Lỗi kết nối server!"));
-            }
-        }
     </script>
 </body>
 </html>
